@@ -1,0 +1,24 @@
+image:
+  repository: vllm/vllm-openai
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+model:
+  id: "meta-llama/Llama-3-8b-instruct"
+  dtype: "float16"
+
+replicaCount: 1
+
+service:
+  port: 8000
+
+storage:
+  size: 40Gi               # cache big weights
+  storageClassName: ""     # default EBS gp3
+
+resources:
+  limits:
+    nvidia.com/gpu: 1
+  requests:
+    cpu: "2000m"
+    memory: "8Gi"

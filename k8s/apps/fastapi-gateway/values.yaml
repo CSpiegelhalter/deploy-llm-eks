@@ -1,0 +1,33 @@
+image:
+  repository: <ECR_ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/fastapi-model
+  tag: "dev" # GitHub Actions will replace with commit SHA
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8080
+
+ingress:
+  enabled: true
+  className: alb
+  hosts:
+    - host: your-api.example.com # or leave as placeholder and use ALB hostname
+      paths:
+        - path: /
+          pathType: Prefix
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+
+# Where FastAPI calls the model server INSIDE the cluster
+modelService:
+  url: "http://vllm:8000"
+
+resources:
+  requests: { cpu: "250m", memory: "256Mi" }
+  limits:   { cpu: "500m", memory: "512Mi" }
+
+extraEnv:
+  - name: MODEL_NAME
+    value: "meta-llama/Llama-3-8b-instruct"

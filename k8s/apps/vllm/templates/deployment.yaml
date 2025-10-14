@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  namespace: inference
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels: { app: vllm }
+  template:
+    metadata:
+      labels: { app: vllm }
+    spec:
+      volumes:
+        - name: cache
+          persistentVolumeClaim:
+            claimName: vllm-cache
+      containers:
+        - name: vllm
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--model={{ .Values.model.id }}"
+            - "--dtype={{ .Values.model.dtype }}"
+            - "--host=0.0.0.0"
+          env:
+            # We’ll mount the HF token from K8s Secret created automatically
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } }
+            - name: HF_TOKEN
+              valueFrom: { secretKeyRef: { name: hf-token, key: HF_TOKEN } }
+            - name: HF_HUB_ENABLE_HF_TRANSFER
+              value: "1"
+          ports: [{ containerPort: {{ .Values.service.port }} }]
+          volumeMounts:
+            - name: cache
+              mountPath: /root/.cache/huggingface
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
