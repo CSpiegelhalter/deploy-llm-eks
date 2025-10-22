@@ -1,44 +1,58 @@
-# name: Build, Push, and Deploy
-# on:
-#   push:
-#     branches: [ main ]
-#     paths:
-#       - 'app/**'
-#       - 'k8s/apps/fastapi-gateway/**'
-#       - '.github/workflows/ci-build-deploy.yml'
+name: Build, Push, and Deploy
 
-# jobs:
-#   build-push-deploy:
-#     runs-on: ubuntu-latest
-#     env:
-#       AWS_REGION: us-east-1
-#       ECR_REPO: fastapi-model
-#     steps:
-#       - uses: actions/checkout@v4
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - 'k8s/apps/fastapi-gateway/**'
+      - '.github/workflows/ci-build-deploy.yml'
 
-#       - name: Configure AWS OIDC
-#         uses: aws-actions/configure-aws-credentials@v4
-#         with:
-#           aws-region: ${{ env.AWS_REGION }}
-#           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GithubOIDCRole
+permissions:
+  id-token: write     # required for OIDC -> AWS
+  contents: write     # required to push the bumped values.yaml
 
-#       - name: Login to ECR
-#         uses: aws-actions/amazon-ecr-login@v2
+jobs:
+  build-push-deploy:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      ECR_REPO: fastapi-model
+    steps:
+      - uses: actions/checkout@v4
 
-#       - name: Build and Push FastAPI
-#         run: |
-#           ECR_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}
-#           docker build -t ${ECR_URI}:${GITHUB_SHA} ./app
-#           docker push ${ECR_URI}:${GITHUB_SHA}
-#           echo "ECR_URI=${ECR_URI}" >> $GITHUB_ENV
+      - name: Configure AWS OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GithubOIDCRole
 
-#       - name: Bump Helm values with new image tag
-#         run: |
-#           FILE=k8s/apps/fastapi-gateway/values.yaml
-#           sed -i "s|^  repository:.*|  repository: ${ECR_URI}|" $FILE
-#           sed -i "s|^  tag:.*|  tag: \"${GITHUB_SHA}\"|" $FILE
-#           git config user.name "github-actions[bot]"
-#           git config user.email "github-actions[bot]@users.noreply.github.com"
-#           git add $FILE
-#           git commit -m "chore: deploy ${GITHUB_SHA}" || echo "No changes to commit"
-#           git push || true
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push FastAPI image
+        run: |
+          set -euo pipefail
+          ECR_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}
+          docker build -t ${ECR_URI}:${GITHUB_SHA} ./app
+          docker push ${ECR_URI}:${GITHUB_SHA}
+          echo "ECR_URI=${ECR_URI}" >> $GITHUB_ENV
+
+      # (Optional) Use yq instead of sed for YAML robustness:
+      # pip install yq && yq -iy '.image.repository=env(ECR_URI) | .image.tag=env(GITHUB_SHA)' k8s/apps/fastapi-gateway/values.yaml
+      - name: Bump Helm values with new image tag
+        run: |
+          set -euo pipefail
+          FILE=k8s/apps/fastapi-gateway/values.yaml
+          # ensure keys exist once (image.repository / image.tag) before sed replaces
+          sed -i "s|^\\s*repository:.*|repository: ${ECR_URI}|" $FILE || true
+          sed -i "s|^\\s*tag:.*|tag: \"${GITHUB_SHA}\"|" $FILE || true
+          # if your file has them nested under 'image:', use these instead:
+          # sed -i "s|^\\s*repository:.*|  repository: ${ECR_URI}|" $FILE
+          # sed -i "s|^\\s*tag:.*|  tag: \"${GITHUB_SHA}\"|" $FILE
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add $FILE
+          git commit -m "chore: deploy ${GITHUB_SHA} [skip ci]" || echo "No changes to commit"
+          git push || true

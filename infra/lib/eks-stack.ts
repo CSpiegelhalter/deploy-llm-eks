@@ -39,7 +39,7 @@ export class EksClusterStack extends Stack {
     });
 
 
-    this.cluster.addNodegroupCapacity("ng-system", {
+    const ng = this.cluster.addNodegroupCapacity("ng-system", {
       nodegroupName: "ng-system",
       desiredSize: 2,
       minSize: 2,
@@ -47,5 +47,10 @@ export class EksClusterStack extends Stack {
       instanceTypes: [new ec2.InstanceType("m6i.large")],
       subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
     });
+    ng.role.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName(
+        "AmazonEC2ContainerRegistryReadOnly"
+      )
+    );
   }
 }
