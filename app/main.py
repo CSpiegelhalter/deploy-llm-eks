@@ -12,7 +12,7 @@ app = FastAPI()
 class ChatIn(BaseModel):
     messages: list[dict]  # e.g., [{"role":"user","content":"Hi!"}]
     max_tokens: int = 256
-    temperature: float = 0.7
+    temperature: float = 0.5
 
 @app.get("/healthz")
 def healthz():
