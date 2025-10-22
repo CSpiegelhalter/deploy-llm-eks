@@ -1,5 +1,5 @@
 image:
-  repository: <ECR_ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/fastapi-model
+  repository: 700274427720.dkr.ecr.us-east-1.amazonaws.com/fastapi-model
   tag: "dev" # GitHub Actions will replace with commit SHA
   pullPolicy: IfNotPresent
 
