@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/your-user/your-repo.git
+    repoURL: https://github.com/CSpiegelhalter/deploy-llm-eks.git
     targetRevision: main
     path: k8s/apps/fastapi-gateway
   destination:
