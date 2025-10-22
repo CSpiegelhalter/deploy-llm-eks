@@ -1,6 +1,6 @@
 image:
 repository: 700274427720.dkr.ecr.us-east-1.amazonaws.com/fastapi-model
-tag: "e32612c51bd098678b605f881080d00658916628"
+tag: "8b37a69c9e89668f4c027c8671247d942ffeb3a8"
   pullPolicy: IfNotPresent
 
 service:
