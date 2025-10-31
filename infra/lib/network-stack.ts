@@ -16,17 +16,22 @@ export class NetworkStack extends Stack {
 
     this.vpc = new ec2.Vpc(this, "Vpc", { maxAzs: 2, natGateways: 1 });
 
-    // ✅ Generic tag only
     this.vpc.privateSubnets.forEach((s) => {
       cdk.Tags.of(s).add("kubernetes.io/role/internal-elb", "1");
     });
 
-    // (Optional) discovery tag **only** if you pass a literal clusterName
+    // ✅ REQUIRED for internet-facing ALB
+    this.vpc.publicSubnets.forEach((s) => {
+      cdk.Tags.of(s).add("kubernetes.io/role/elb", "1");
+    });
+
+    // ✅ Cluster discovery tags (controller finds eligible subnets)
     if (props?.clusterName) {
-      this.vpc.privateSubnets.forEach((s) => {
-        cdk.Tags.of(s).add("karpenter.sh/discovery", props.clusterName!);
-        // If you also use cluster ownership tag, keep it literal too:
-        // cdk.Tags.of(s).add(`kubernetes.io/cluster/${props.clusterName!}`, "shared");
+      [...this.vpc.publicSubnets, ...this.vpc.privateSubnets].forEach((s) => {
+        cdk.Tags.of(s).add(
+          `kubernetes.io/cluster/${props.clusterName!}`,
+          "shared"
+        );
       });
     }
   }

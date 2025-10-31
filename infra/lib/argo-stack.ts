@@ -38,12 +38,24 @@ export class ArgoStack extends Stack {
       release: "argo-cd",
       wait: true,
       atomic: true,
-      // create the namespace automatically (CDK v2 supports this on addHelmChart)
-      createNamespace: true as any, // some typings miss this; it's supported by the underlying call
       values: {
-        server: { extraArgs: ["--insecure"] }, // behind ALB; add TLS later if you want
+        server: {
+          extraArgs: ["--insecure"],
+          ingress: {
+            enabled: true,
+            annotations: {
+              "kubernetes.io/ingress.class": "alb",
+              "alb.ingress.kubernetes.io/scheme": "internet-facing",
+              "alb.ingress.kubernetes.io/target-type": "ip",
+              "alb.ingress.kubernetes.io/listen-ports": '[{"HTTP":80}]',
+            },
+            ingressClassName: "alb",
+            paths: ["/"],
+          },
+        },
       },
     });
+
 
     // 2) Root "App-of-Apps" Application: tells Argo CD to watch your repo's k8s/apps folder
     const rootApp = cluster.addManifest("argocd-root-app", {
