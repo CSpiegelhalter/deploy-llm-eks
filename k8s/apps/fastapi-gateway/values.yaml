@@ -1,6 +1,7 @@
+# k8s/apps/fastapi-gateway/values.yaml
 image:
-repository: 700274427720.dkr.ecr.us-east-1.amazonaws.com/fastapi-model
-tag: "fa968e5bbdee254bf728ef5992b8ad579e543be6"
+  repository: 700274427720.dkr.ecr.us-east-1.amazonaws.com/fastapi-model
+  tag: "fa968e5bbdee254bf728ef5992b8ad579e543be6"
   pullPolicy: IfNotPresent
 
 service:
@@ -10,7 +11,7 @@ ingress:
   enabled: true
   className: alb
   hosts:
-    - host: your-api.example.com # or leave as placeholder and use ALB hostname
+    # - host: your-api.example.com   # or omit; ALB DNS will work without a host
       paths:
         - path: /
           pathType: Prefix
@@ -20,13 +21,16 @@ ingress:
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
 
-# Where FastAPI calls the model server INSIDE the cluster
 modelService:
   url: "http://vllm:8000"
 
 resources:
-  requests: { cpu: "250m", memory: "256Mi" }
-  limits:   { cpu: "500m", memory: "512Mi" }
+  requests:
+    cpu: "250m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
 
 extraEnv:
   - name: MODEL_NAME

@@ -5,29 +5,36 @@ metadata:
 spec:
   replicas: 2
   selector:
-    matchLabels: { app: fastapi-gateway }
+    matchLabels:
+      app: fastapi-gateway
   template:
     metadata:
-      labels: { app: fastapi-gateway }
+      labels:
+        app: fastapi-gateway
     spec:
       containers:
         - name: api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports: [{ containerPort: {{ .Values.service.port }} }]
+          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          ports:
+            - containerPort: {{ .Values.service.port }}
           env:
             - name: MODEL_BASE_URL
               value: "{{ .Values.modelService.url }}"
-{{- if .Values.extraEnv }}
-{{ toYaml (list .Values.extraEnv) | indent 12 }}
-{{- end }}
+          {{- with .Values.extraEnv }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
           livenessProbe:
-            httpGet: { path: /healthz, port: {{ .Values.service.port }} }
+            httpGet:
+              path: /healthz
+              port: {{ .Values.service.port }}
             initialDelaySeconds: 5
             periodSeconds: 20
           readinessProbe:
-            httpGet: { path: /healthz, port: {{ .Values.service.port }} }
+            httpGet:
+              path: /healthz
+              port: {{ .Values.service.port }}
             initialDelaySeconds: 3
             periodSeconds: 10
           resources:
-{{ toYaml .Values.resources | indent 12 }}
+          {{- toYaml .Values.resources | nindent 12 }}
