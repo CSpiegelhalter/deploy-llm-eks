@@ -1,7 +1,7 @@
 # k8s/apps/fastapi-gateway/values.yaml
 image:
-repository: 700274427720.dkr.ecr.us-east-1.amazonaws.com/fastapi-model
-tag: "a87c4d47bbf2c263fd459d4bc4afcfc32a70095f"
+  repository: 700274427720.dkr.ecr.us-east-1.amazonaws.com/fastapi-model
+  tag: "latest"                # default; ArgoCD/CI can override via helm parameters
   pullPolicy: IfNotPresent
 
 service:
@@ -10,8 +10,9 @@ service:
 ingress:
   enabled: true
   className: alb
+  # If you don't have a DNS host, you can omit `host` entirely and ALB will still work on its DNS name.
   hosts:
-    # - host: your-api.example.com   # or omit; ALB DNS will work without a host
+    - # host: your-api.example.com   # (optional) set when you own a domain
       paths:
         - path: /
           pathType: Prefix

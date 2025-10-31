@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+data:
+  # Start simple: CI is admin (tighten later)
+  policy.csv: |
+    g, ci, role:admin
+  policy.default: role:readonly
