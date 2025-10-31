@@ -40,27 +40,35 @@ export class ArgoStack extends Stack {
       },
     });
 
-   const rootApp = cluster.addManifest("argocd-root-app", {
-     apiVersion: "argoproj.io/v1alpha1",
-     kind: "Application",
-     metadata: { name: "platform-root", namespace: "argocd" },
-     spec: {
-       project: "default",
-       source: {
-         repoURL: props.repoUrl,
-         targetRevision: props.targetRevision ?? "main",
-         path: "k8s/argocd",
+   const rootApp = new eks.KubernetesManifest(this, "argocd-root-app", {
+     cluster,
+     manifest: [
+       {
+         apiVersion: "argoproj.io/v1alpha1",
+         kind: "Application",
+         metadata: { name: "platform-root", namespace: "argocd" },
+         spec: {
+           project: "default",
+           source: {
+             repoURL: repoUrl,
+             targetRevision,
+             path: "k8s/argocd",
+           },
+           destination: {
+             server: "https://kubernetes.default.svc",
+             namespace: "argocd",
+           },
+           syncPolicy: {
+             automated: { prune: true, selfHeal: true },
+             syncOptions: ["CreateNamespace=true"],
+           },
+         },
        },
-       destination: {
-         server: "https://kubernetes.default.svc",
-         namespace: "argocd",
-       },
-       syncPolicy: {
-         automated: { prune: true, selfHeal: true },
-         syncOptions: ["CreateNamespace=true"],
-       },
-     },
+     ],
+     overwrite: true, // 👈 if it already exists, “apply” instead of “create”
+     prune: true, // CDK will own lifecycle
    });
+
    rootApp.node.addDependency(argo);
 
   }

@@ -1,3 +1,4 @@
+# k8s/argocd/platform-apps.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -10,7 +11,8 @@ spec:
     targetRevision: main
     path: k8s/apps
     directory:
-      recurse: true   # lets Argo read both child App yamls and charts under this path
+      recurse: true
+      include: "*-app.yaml"   # 👈 ensure only child Applications are picked up
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
