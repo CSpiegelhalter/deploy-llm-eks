@@ -47,11 +47,14 @@ jobs:
 
       - name: Argo CD Login
         env:
-          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }} # e.g. k8s-argocd-...elb.amazonaws.com
           ARGOCD_TOKEN:  ${{ secrets.ARGOCD_TOKEN }}
         run: |
-          # --grpc-web is often needed behind ALB; --insecure if you use HTTP
-          argocd login "$ARGOCD_SERVER" --sso --grpc-web --insecure --auth-token "$ARGOCD_TOKEN"
+          # force port 80 + plaintext + grpc-web
+          argocd login "${ARGOCD_SERVER}:80" \
+            --auth-token "${ARGOCD_TOKEN}" \
+            --grpc-web \
+            --plaintext
 
       - name: Argo CD Set Image Params and Sync
         run: |
