@@ -8,9 +8,13 @@ spec:
   source:
     repoURL: https://github.com/CSpiegelhalter/deploy-llm-eks.git
     targetRevision: main
-    path: k8s/apps/fastapi-gateway
+    path: k8s/apps/fastapi-gateway   # <--- folder that contains Chart.yaml
+    helm:
+      valueFiles: [values.yaml]
   destination:
     server: https://kubernetes.default.svc
-    namespace: inference
+    namespace: fastapi                 # <--- app namespace (will be created)
   syncPolicy:
     automated: { prune: true, selfHeal: true }
+    syncOptions:
+      - CreateNamespace=true

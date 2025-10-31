@@ -8,9 +8,13 @@ spec:
   source:
     repoURL: https://github.com/CSpiegelhalter/deploy-llm-eks.git
     targetRevision: main
-    path: k8s/apps/vllm
+    path: k8s/apps/vllm                 # <--- folder that contains Chart.yaml
+    helm:
+      valueFiles: [values.yaml]
   destination:
     server: https://kubernetes.default.svc
-    namespace: inference
+    namespace: vllm                     # <--- app namespace
   syncPolicy:
-    automated: { prune: true, selfHeal: true }
+    automated: { prune: true, selfHeal true }
+    syncOptions:
+      - CreateNamespace=true

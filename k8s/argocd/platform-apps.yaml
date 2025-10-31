@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: platform-root
+  name: platform-apps
   namespace: argocd
 spec:
   project: default
@@ -9,8 +9,12 @@ spec:
     repoURL: https://github.com/CSpiegelhalter/deploy-llm-eks.git
     targetRevision: main
     path: k8s/apps
+    directory:
+      recurse: true   # lets Argo read both child App yamls and charts under this path
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
   syncPolicy:
     automated: { prune: true, selfHeal: true }
+    syncOptions:
+      - CreateNamespace=true
