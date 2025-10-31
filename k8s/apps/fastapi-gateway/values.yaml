@@ -1,7 +1,7 @@
 # k8s/apps/fastapi-gateway/values.yaml
 image:
-  repository: 700274427720.dkr.ecr.us-east-1.amazonaws.com/fastapi-model
-  tag: "fa968e5bbdee254bf728ef5992b8ad579e543be6"
+repository: 700274427720.dkr.ecr.us-east-1.amazonaws.com/fastapi-model
+tag: "a87c4d47bbf2c263fd459d4bc4afcfc32a70095f"
   pullPolicy: IfNotPresent
 
 service:
