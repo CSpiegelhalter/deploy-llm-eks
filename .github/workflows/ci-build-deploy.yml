@@ -28,12 +28,6 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GithubOIDCRole
 
-      - name: Install Argo CD CLI
-        run: |
-          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-          chmod +x argocd
-          sudo mv argocd /usr/local/bin/
-
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
@@ -44,30 +38,3 @@ jobs:
           docker build -t ${ECR_URI}:${GITHUB_SHA} ./app
           docker push ${ECR_URI}:${GITHUB_SHA}
           echo "ECR_URI=${ECR_URI}" >> $GITHUB_ENV
-
-      - name: Argo CD Login
-        env:
-          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }} # e.g. k8s-argocd-...elb.amazonaws.com
-          ARGOCD_TOKEN:  ${{ secrets.ARGOCD_TOKEN }}
-        run: |
-          # force port 80 + plaintext + grpc-web
-          argocd login "${ARGOCD_SERVER}:80" \
-            --auth-token "${ARGOCD_TOKEN}" \
-            --grpc-web \
-            --plaintext
-
-      - name: Argo CD Set Image Params and Sync
-        run: |
-          run: |
-          set -euo pipefail
-          # Update Helm params on the Application (no repo edits)
-          argocd app set fastapi-gateway \
-            --grpc-web --insecure \
-            --helm-set image.repository="${ECR_URI}" \
-            --helm-set image.tag="${GITHUB_SHA}"
-
-          # Sync & wait for health
-          argocd app sync fastapi-gateway --grpc-web --insecure --timeout 600 --prune
-          argocd app wait fastapi-gateway --grpc-web --insecure --health --timeout 600
-
-
