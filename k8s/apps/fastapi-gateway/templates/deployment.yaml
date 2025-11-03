@@ -15,15 +15,16 @@ spec:
       containers:
         - name: api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
           ports:
             - containerPort: {{ .Values.service.port }}
           env:
             - name: MODEL_BASE_URL
               value: "{{ .Values.modelService.url }}"
-          {{- with .Values.extraEnv }}
-          {{- toYaml . | nindent 10 }}
-          {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- /* extraEnv must be a list of {name,value} objects */}}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /healthz
@@ -37,4 +38,4 @@ spec:
             initialDelaySeconds: 3
             periodSeconds: 10
           resources:
-          {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml .Values.resources | nindent 12 }}
