@@ -3,7 +3,7 @@ kind: NodeClass
 metadata:
   name: default
 spec:
-  role: arn:aws:iam::700274427720:role/KarpenterNodeRole
+  role: arn:aws:iam::700274427720:role/EksClusterStack-KarpenterNodeRole4664A89A-kugAxb2vAZgC
   subnetSelectorTerms:
     - tags:
         karpenter.sh/discovery: llm-eks
