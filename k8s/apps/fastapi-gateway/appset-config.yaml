@@ -1,0 +1,9 @@
+# k8s/apps/fastapi-gateway/appset-config.yaml
+app:
+  name: fastapi-gateway
+  path: fastapi-gateway
+  namespace: fastapi
+  imageAlias: gateway
+  imageRepo: 700274427720.dkr.ecr.us-east-1.amazonaws.com/fastapi-model
+  helmImageName: image.repository
+  helmTagName: image.tag

@@ -1,22 +1,39 @@
-# k8s/argocd/platform-apps.yaml
+# k8s/argocd/platform-apps.yaml  (REPLACE FILE)
 apiVersion: argoproj.io/v1alpha1
-kind: Application
+kind: ApplicationSet
 metadata:
   name: platform-apps
   namespace: argocd
 spec:
-  project: default
-  source:
-    repoURL: https://github.com/CSpiegelhalter/deploy-llm-eks.git
-    targetRevision: main
-    path: k8s/apps
-    directory:
-      recurse: true
-      include: "*-app.yaml"   # 👈 ensure only child Applications are picked up
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: argocd
-  syncPolicy:
-    automated: { prune: true, selfHeal: true }
-    syncOptions:
-      - CreateNamespace=true
+  generators:
+    - git:
+        repoURL: https://github.com/CSpiegelhalter/deploy-llm-eks.git
+        revision: main
+        files:
+          # Each app folder provides its own appset-config.yaml
+          - path: k8s/apps/*/appset-config.yaml
+  template:
+    metadata:
+      name: '{{app.name}}'
+      annotations:
+        # Central Image Updater policy; per-app alias is {{app.imageAlias}}
+        argocd-image-updater.argoproj.io/write-back-method: argocd
+        argocd-image-updater.argoproj.io/update-strategy: newest-build
+        argocd-image-updater.argoproj.io/image-list: '{{app.imageAlias}}={{app.imageRepo}}'
+        # Tell Image Updater where Helm keeps repo/tag values for this app
+        argocd-image-updater.argoproj.io/{{app.imageAlias}}.helm.image-name: '{{app.helmImageName}}'
+        argocd-image-updater.argoproj.io/{{app.imageAlias}}.helm.tag-name:  '{{app.helmTagName}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/CSpiegelhalter/deploy-llm-eks.git
+        targetRevision: main
+        path: 'k8s/apps/{{app.path}}'       # folder containing Chart.yaml
+        helm:
+          valueFiles: ['values.yaml']
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{app.namespace}}'
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: ["CreateNamespace=true"]

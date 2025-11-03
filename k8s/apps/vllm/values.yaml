@@ -1,6 +1,6 @@
 image:
-  repository: vllm/vllm-openai
-  tag: "latest"
+  repository: <default>
+  tag: "<default>"
   pullPolicy: IfNotPresent
 
 model:

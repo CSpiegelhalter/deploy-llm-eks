@@ -1,7 +1,6 @@
-# k8s/apps/fastapi-gateway/values.yaml
 image:
-  repository: 700274427720.dkr.ecr.us-east-1.amazonaws.com/fastapi-model
-  tag: "latest"                # default; ArgoCD/CI can override via helm parameters
+  repository: <default>
+  tag: "<default>"
   pullPolicy: IfNotPresent
 
 service:

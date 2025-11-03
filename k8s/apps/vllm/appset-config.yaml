@@ -1,0 +1,9 @@
+# k8s/apps/vllm/appset-config.yaml
+app:
+  name: vllm
+  path: vllm
+  namespace: vllm
+  imageAlias: vllm
+  imageRepo: vllm/vllm-openai           # public image on Docker Hub
+  helmImageName: image.repository
+  helmTagName: image.tag

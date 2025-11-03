@@ -19,7 +19,7 @@ spec:
       containers:
         - name: vllm
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
           args:
             - "--model={{ .Values.model.id }}"
             - "--dtype={{ .Values.model.dtype }}"
