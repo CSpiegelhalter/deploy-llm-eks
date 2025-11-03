@@ -1,4 +1,4 @@
-import { Stack, StackProps } from "aws-cdk-lib";
+import { CfnOutput, Stack, StackProps } from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as eks from "aws-cdk-lib/aws-eks";
 import { KubectlV33Layer } from "@aws-cdk/lambda-layer-kubectl-v33";
@@ -39,18 +39,21 @@ export class EksClusterStack extends Stack {
     });
 
 
-    const ng = this.cluster.addNodegroupCapacity("ng-system", {
-      nodegroupName: "ng-system",
-      desiredSize: 2,
-      minSize: 2,
-      maxSize: 5,
-      instanceTypes: [new ec2.InstanceType("m6i.large")],
-      subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+    const karpenterNodeRole = new iam.Role(this, "KarpenterNodeRole", {
+      assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonEKSWorkerNodePolicy"),
+        iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonEKS_CNI_Policy"),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "AmazonEC2ContainerRegistryReadOnly"
+        ),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "AmazonSSMManagedInstanceCore"
+        ),
+      ],
     });
-    ng.role.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName(
-        "AmazonEC2ContainerRegistryReadOnly"
-      )
-    );
+    new CfnOutput(this, "KarpenterNodeRoleArn", {
+      value: karpenterNodeRole.roleArn,
+    });
   }
 }

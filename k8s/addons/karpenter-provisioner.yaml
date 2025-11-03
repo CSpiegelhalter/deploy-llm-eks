@@ -1,0 +1,35 @@
+apiVersion: karpenter.sh/v1beta1
+kind: NodeClass
+metadata:
+  name: default
+spec:
+  role: arn:aws:iam::700274427720:role/KarpenterNodeRole
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: llm-eks
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: llm-eks
+
+---
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    spec:
+      nodeClassRef:
+        name: default
+      requirements:
+        - key: "kubernetes.io/arch"
+          operator: In
+          values: ["amd64"]
+        - key: "node.kubernetes.io/instance-type"
+          operator: In
+          values: ["m6i.large", "m6i.xlarge"]
+  limits:
+    cpu: 1000
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    expireAfter: 720h # 30 days
