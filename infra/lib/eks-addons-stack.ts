@@ -4,16 +4,34 @@ import * as eks from "aws-cdk-lib/aws-eks";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { Construct } from "constructs";
+import { EKSClient, DescribeClusterCommand } from "@aws-sdk/client-eks";
+
 
 interface Props extends StackProps {
   cluster: eks.Cluster; // <-- only the cluster
+  clusterEndpoint: string;
 }
+
+export async function getClusterEndpoint(
+  clusterName: string,
+  region: string
+): Promise<string> {
+  const client = new EKSClient({ region });
+  const resp = await client.send(
+    new DescribeClusterCommand({ name: clusterName })
+  );
+  if (!resp.cluster?.endpoint)
+    throw new Error("EKS cluster endpoint not found");
+  return resp.cluster.endpoint;
+}
+
 
 export class EksAddonsStack extends Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
 
-    const { cluster } = props;
+    const { cluster, clusterEndpoint } = props;
+
 
     const nsKarpenter = cluster.addManifest("ns-karpenter", {
       apiVersion: "v1",
@@ -50,12 +68,14 @@ export class EksAddonsStack extends Stack {
         ],
       })
     );
-    cluster.addHelmChart("alb-controller", {
+    const albChart = cluster.addHelmChart("alb-controller", {
       repository: "https://aws.github.io/eks-charts",
       chart: "aws-load-balancer-controller",
       namespace: "kube-system",
+      createNamespace: false,
       release: "aws-load-balancer-controller",
       wait: true,
+      timeout: Duration.minutes(15),
       atomic: true,
       values: {
         clusterName: cluster.clusterName,
@@ -64,28 +84,31 @@ export class EksAddonsStack extends Stack {
     });
 
     // Metrics Server
-    cluster.addHelmChart("metrics-server", {
+    const metricsChart = cluster.addHelmChart("metrics-server", {
       repository: "https://kubernetes-sigs.github.io/metrics-server/",
       chart: "metrics-server",
       namespace: "kube-system",
       release: "metrics-server",
       wait: true,
-      atomic: true,
       timeout: Duration.minutes(15),
+      atomic: true,
       values: { args: ["--kubelet-insecure-tls"] },
     });
+    metricsChart.node.addDependency(albChart);
 
     // Secrets Store CSI Driver
-    const csiDriver = cluster.addHelmChart("secrets-store-csi", {
+    const csiDriver = cluster.addHelmChart("secrets-store-csi-driver", {
       repository:
         "https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts",
       chart: "secrets-store-csi-driver",
       namespace: "kube-system",
       release: "secrets-store-csi-driver",
       wait: true,
+      timeout: Duration.minutes(15),
       atomic: true,
       values: { syncSecret: { enabled: true } },
     });
+    csiDriver.node.addDependency(metricsChart);
 
     // AWS provider (disable subchart; unique SA)
     const csiAws = cluster.addHelmChart("csi-aws-provider", {
@@ -103,6 +126,7 @@ export class EksAddonsStack extends Stack {
       },
     });
     csiAws.node.addDependency(csiDriver);
+    csiAws.node.addDependency(metricsChart);
 
     // Karpenter IRSA (minimal; replace with least-priv JSON for prod)
     const karpSa = cluster.addServiceAccount("karpenter-sa", {
@@ -132,26 +156,31 @@ export class EksAddonsStack extends Stack {
     );
 
     // Karpenter (Helm)
-    const karpenterChart = cluster.addHelmChart("karpenter", {
-      repository: "https://charts.karpenter.sh",
-      chart: "karpenter",
-      namespace: "karpenter",
-      release: "karpenter",
-      createNamespace: false, // you created the ns already
-      wait: false, // 👈 don’t wait for pods/webhook to be ready
-      atomic: false, // keep rollback semantics within Helm
-      // Pin a known-good version to reduce surprises:
-      // version: "0.37.0",
-      values: {
-        serviceAccount: { create: false, name: "karpenter" },
-        settings: { clusterName: cluster.clusterName },
-      },
-    });
-    karpenterChart.node.addDependency(karpSa);
+   const karpenterChart = cluster.addHelmChart("karpenter", {
+     repository: "oci://public.ecr.aws/karpenter/karpenter",
+     chart: "karpenter",
+     version: "1.2.3",
+     namespace: "karpenter",
+     release: "karpenter",
+     wait: false,
+     atomic: false,
+     values: {
+       serviceAccount: { create: false, name: "karpenter" },
+       controller: {
+         env: [
+           { name: "CLUSTER_NAME", value: cluster.clusterName },
+           { name: "CLUSTER_ENDPOINT", value: clusterEndpoint },
+         ],
+       },
+     },
+   });
 
+    karpenterChart.node.addDependency(csiAws);
+    karpenterChart.node.addDependency(karpSa);
+    karpenterChart.node.addDependency(albChart);
 
     // NVIDIA plugin (don’t block before GPUs exist)
-    cluster.addHelmChart("nvidia-device-plugin", {
+    const nvidiaChart = cluster.addHelmChart("nvidia-device-plugin", {
       repository: "https://nvidia.github.io/k8s-device-plugin",
       chart: "nvidia-device-plugin",
       namespace: "kube-system",
@@ -159,6 +188,7 @@ export class EksAddonsStack extends Stack {
       wait: false,
       atomic: true,
     });
+    nvidiaChart.node.addDependency(karpenterChart);
 
     // If you *must* open intra-SG traffic, that mutates the EKS SG (owned by this stack), not the VPC:
     cluster.clusterSecurityGroup.addIngressRule(

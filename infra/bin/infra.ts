@@ -39,9 +39,11 @@ const eks = new EksClusterStack(app, "EksClusterStack", {
   clusterName,
 });
 eks.addDependency(iamStack);
+
 const addons = new EksAddonsStack(app, "EksAddonsStack", {
   env,
   cluster: eks.cluster,
+  clusterEndpoint: eks.clusterEndpoint,
 });
 addons.addDependency(eks);
 

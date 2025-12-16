@@ -12,6 +12,7 @@ interface Props extends StackProps {
 
 export class EksClusterStack extends Stack {
   public readonly cluster: eks.Cluster;
+  public readonly clusterEndpoint: string;
 
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
@@ -21,11 +22,9 @@ export class EksClusterStack extends Stack {
       vpc: props.vpc,
       clusterName: props.clusterName,
       defaultCapacity: 0,
-      endpointAccess:
-        eks.EndpointAccess.PUBLIC_AND_PRIVATE.onlyFrom("104.60.52.105/32"), // my home IP (change to use a VPN instead)
+      endpointAccess: eks.EndpointAccess.PUBLIC_AND_PRIVATE,
       kubectlLayer: new KubectlV33Layer(this, "KubectlLayer"),
     });
-
 
     const roleArn = `arn:aws:iam::${this.account}:role/KubeAdmin`;
 
@@ -38,6 +37,12 @@ export class EksClusterStack extends Stack {
       groups: ["system:masters"],
     });
 
+    this.clusterEndpoint = this.cluster.clusterEndpoint;
+
+    new CfnOutput(this, "ClusterEndpoint", {
+      value: this.cluster.clusterEndpoint,
+      exportName: `${props.clusterName}-Endpoint`,
+    });
 
     const karpenterNodeRole = new iam.Role(this, "KarpenterNodeRole", {
       assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
@@ -55,5 +60,26 @@ export class EksClusterStack extends Stack {
     new CfnOutput(this, "KarpenterNodeRoleArn", {
       value: karpenterNodeRole.roleArn,
     });
+
+    const systemNg = this.cluster.addNodegroupCapacity("system-ng", {
+      nodegroupName: "system-ng",
+      desiredSize: 1,
+      minSize: 1,
+      maxSize: 1,
+      instanceTypes: [new ec2.InstanceType("t3.medium")],
+      subnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+    });
+
+    systemNg.role.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonEKSWorkerNodePolicy")
+    );
+    systemNg.role.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonEKS_CNI_Policy")
+    );
+    systemNg.role.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName(
+        "AmazonEC2ContainerRegistryReadOnly"
+      )
+    );
   }
 }
